@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { LoginResponse } from './dto/AuthData';
 import { HTTP_CODE } from './enums/HTTP_CODE';
-import { cookieOptions } from './utils/CookieOptions';
+import { cookieOptions } from './utils/CookieHelpers';
 
 export const responseWithCookie = (
   res: Response,

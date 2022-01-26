@@ -19,22 +19,26 @@ import * as Validator from '../validators/AuthValidator';
 import { BadRequestException } from '../exceptions/BadRequestException';
 import Exception from '../exceptions/Exception';
 import ServerErrorException from '../exceptions/ServerErrorException';
-import * as redis from '../database/redis';
 import { decrypt, encrypt } from '../utils/Encrypt';
 import { LoginRequest, RegisterRequest } from '../dto/AuthData';
 import { customAlphabet } from 'nanoid/async';
 import VerificationCodeModel from '../models/VerificationCodeModel';
 import UserModel from '../models/UserModel';
-import { cookieOptions } from '../utils/CookieOptions';
+import {
+  cookieOptions,
+  getAuthTokenFromCookie,
+  getUserIdFromCookie,
+} from '../utils/CookieHelpers';
+import {
+  getRefreshTokenFromRedis,
+  setRefreshTokenInRedis,
+} from '../services/redisServices';
 
-export const checkIsAuthenticated = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  const cookieId = req.cookies.qid;
-  const LOGIN_COOKIE = req.cookies.LOGIN_COOKIE;
-  if (cookieId && LOGIN_COOKIE) {
-    const user = await UserModel.findById(cookieId);
+export const checkIsAuthenticated = async (req: Request, res: Response) => {
+  const userId = getUserIdFromCookie(req);
+  const accessToken = getAuthTokenFromCookie(req);
+  if (userId && accessToken) {
+    const user = await UserModel.findById(userId);
     if (user) {
       res.send('login');
     }
@@ -101,13 +105,13 @@ export const emailVerificationHandler = async (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+) => {
   const { verificationCode } = req.body;
   if (verificationCode.trim() === '') {
     return next(new Exception(HTTP_CODE.BAD_REQUEST, 'invalid code'));
   }
   try {
-    const userId = req.cookies.qid;
+    const userId = getUserIdFromCookie(req);
     const code = await VerificationCodeModel.findOne({
       owner: userId,
     }).populate('owner', '-password');
@@ -130,7 +134,7 @@ export const emailVerificationHandler = async (
         const refreshToken = await JwtService.signRefreshToken(user);
         const encryptedAccessToken = encrypt(accessToken ?? '');
         const encryptedRefreshToken = encrypt(refreshToken ?? '');
-        await redis.set(`${userId}_refToken`, encryptedRefreshToken);
+        await setRefreshTokenInRedis(userId, encryptedRefreshToken);
         const loginUser = await UserModel.findById(userId).select(
           '-password -jwtVersion -strategy -requiredAuthAction'
         );
@@ -185,7 +189,7 @@ export const loginHandler = async (
       const encryptedAccessToken = encrypt(accessToken);
       const encryptedRefreshToken = encrypt(refreshToken);
       // store refreshToken to redis
-      await redis.set(`${user.id}_refToken`, encryptedRefreshToken);
+      await setRefreshTokenInRedis(user.id, encryptedRefreshToken);
       const userData = {
         _id: user.id,
         email: user.email,
@@ -209,10 +213,10 @@ export const logoutHandler = async (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+) => {
   try {
     // verify the token first
-    const userId = req.cookies.qid;
+    const userId = getUserIdFromCookie(req);
     if (userId) {
       // delete user's cookie
       res.clearCookie(process.env.COOKIE_NAME);
@@ -231,8 +235,8 @@ export const refreshTokenHandler = async (
   next: NextFunction
 ) => {
   try {
-    const cookieId = req.cookies.qid;
-    const encryptedRefreshToken = await redis.get(`${cookieId}_refToken`);
+    const userId = getUserIdFromCookie(req);
+    const encryptedRefreshToken = await getRefreshTokenFromRedis(userId);
     const bearerRefreshToken = decrypt(encryptedRefreshToken ?? '');
     const token = bearerRefreshToken.split(' ')[1];
     const payload = await JwtService.verifyRefreshToken(token);
@@ -249,7 +253,7 @@ export const refreshTokenHandler = async (
       if (newAccessToken && newRefreshToken) {
         const newEncryptedAccessToken = encrypt(newAccessToken);
         const newEncryptedRefreshToken = encrypt(newRefreshToken);
-        await redis.set(`${cookieId}_refToken`, newEncryptedRefreshToken);
+        await setRefreshTokenInRedis(userId, newEncryptedRefreshToken);
         return responseWithCookieOnly(res, newEncryptedAccessToken);
       }
     }
@@ -263,7 +267,7 @@ export const forgotPasswordHandler = async (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+) => {
   const { email } = req.body;
   const { errors, valid } = Validator.forgotPasswordValidator(email);
   if (!valid) {
@@ -298,7 +302,7 @@ export const resetPasswordHandler = async (
   req: Request,
   res: Response,
   next: NextFunction
-): Promise<void> => {
+) => {
   const { password } = req.body;
   const { encryptedLinkToken } = req.params;
   const { errors, valid } = Validator.resetPasswordValidator(password);

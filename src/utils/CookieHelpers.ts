@@ -1,4 +1,4 @@
-import { CookieOptions } from 'express';
+import { CookieOptions, Request } from 'express';
 
 export const cookieOptions = (): CookieOptions => {
   const date = new Date();
@@ -9,4 +9,12 @@ export const cookieOptions = (): CookieOptions => {
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
   };
+};
+
+export const getUserIdFromCookie = (req: Request) => {
+  return req.cookies.cid as string;
+};
+
+export const getAuthTokenFromCookie = (req: Request) => {
+  return req.cookies.authCookie as string;
 };

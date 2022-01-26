@@ -6,8 +6,8 @@ import UserModel from '../models/UserModel';
 import { v4 } from 'uuid';
 import { signAccessToken, signRefreshToken } from '../services/JwtService';
 import { encrypt } from '../utils/Encrypt';
-import { set } from '../database/redis';
-import { cookieOptions } from '../utils/CookieOptions';
+import { cookieOptions } from '../utils/CookieHelpers';
+import { setRefreshTokenInRedis } from '../services/redisServices';
 
 interface GoogleTokensResult {
   access_token: string;
@@ -126,7 +126,7 @@ export const googleOauthHandler = async (req: Request, res: Response) => {
     const refresh_token = await signRefreshToken(myUser);
     const encryptedAccessToken = encrypt(accessToken!);
     const encryptedRefreshToken = encrypt(refresh_token!);
-    await set(`${myUser.id}_refToken`, encryptedRefreshToken);
+    await setRefreshTokenInRedis(myUser.id, encryptedRefreshToken);
     res.cookie(process.env.COOKIE_ID, myUser.id, cookieOptions());
     res.cookie(process.env.COOKIE_NAME, encryptedAccessToken, cookieOptions());
     res.redirect(process.env.CLIENT_ORIGIN);

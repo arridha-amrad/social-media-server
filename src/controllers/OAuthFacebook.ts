@@ -2,10 +2,10 @@
 import { Request, Response } from 'express';
 import nanoid from 'nanoid/async';
 import { v4 } from 'uuid';
-import { set } from '../database/redis';
 import UserModel from '../models/UserModel';
 import { signAccessToken, signRefreshToken } from '../services/JwtService';
-import { cookieOptions } from '../utils/CookieOptions';
+import { setRefreshTokenInRedis } from '../services/redisServices';
+import { cookieOptions } from '../utils/CookieHelpers';
 import { encrypt } from '../utils/Encrypt';
 
 interface FacebookUser {
@@ -55,7 +55,7 @@ const OAuthFacebook = async (req: Request, res: Response) => {
 
     const encryptedAccessToken = encrypt(accessToken!);
     const encryptedRefreshToken = encrypt(refresh_token!);
-    await set(`${myUser.id}_refToken`, encryptedRefreshToken);
+    await setRefreshTokenInRedis(myUser.id, encryptedRefreshToken);
     res.cookie(process.env.COOKIE_ID, myUser.id, cookieOptions());
     res.cookie(process.env.COOKIE_NAME, encryptedAccessToken, cookieOptions());
     res.redirect(process.env.CLIENT_ORIGIN);
