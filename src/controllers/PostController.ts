@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import ServerErrorException from '../exceptions/ServerErrorException';
 import PostModel from '../models/PostModel';
+import * as NotificationServices from '../services/NotificationServices';
+import mongoose from 'mongoose';
 
 export const createPostHandler = async (
   req: Request,
@@ -115,6 +117,23 @@ export const likeDislikeHandler = async (
           },
       { new: true }
     );
+    if (post) {
+      if (isLiked) {
+        await NotificationServices.deleteNotification({
+          receiver: post.owner.toString(),
+          sender: req.userId,
+          type: 'likePost',
+          postId: postId,
+        });
+      } else {
+        await NotificationServices.createNotification({
+          receiver: post.owner,
+          sender: new mongoose.Types.ObjectId(req.userId),
+          type: 'likePost',
+          postId: postId,
+        });
+      }
+    }
     return res.status(200).json({ post: updatedPost });
   } catch (err) {
     console.log(err);
