@@ -4,6 +4,7 @@ import CommentModel from '../models/CommentModel';
 import PostModel from '../models/PostModel';
 import * as NotificationServices from '../services/NotificationServices';
 import mongoose from 'mongoose';
+import { NotificationType } from '../enums/NotificationTypes';
 
 export const createCommentHandler = async (
   req: Request,
@@ -137,22 +138,41 @@ export const likeDislikeHandler = async (
   next: NextFunction
 ) => {
   const commentId = req.params.id;
+  const likeSender = req.userId;
   try {
     const comment = await CommentModel.findById(commentId);
     const isLiked = comment?.likes.find(
-      (userId) => userId.toString() === req.userId
+      (userId) => userId.toString() === likeSender
     );
     const updatedComment = await CommentModel.findByIdAndUpdate(
       commentId,
       isLiked
         ? {
-            $pull: { likes: req.userId },
+            $pull: { likes: likeSender },
           }
         : {
-            $push: { likes: req.userId },
+            $push: { likes: likeSender },
           },
       { new: true }
     );
+    if (isLiked) {
+      // if the comment got dislike, remove the related notification
+      await NotificationServices.deleteNotification({
+        sender: likeSender,
+        commentId,
+        type: NotificationType.likeComment,
+      });
+    } else {
+      // if the likeSender is not the commentOwner, create notification
+      if (likeSender !== comment?.owner.toString()) {
+        await NotificationServices.createNotification({
+          commentId,
+          sender: likeSender,
+          type: NotificationType.likeComment,
+          receiver: comment?.owner,
+        });
+      }
+    }
     return res.status(200).json({ comment: updatedComment });
   } catch (err) {
     console.log(err);

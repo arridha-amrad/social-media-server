@@ -101,37 +101,42 @@ export const likeDislikeHandler = async (
   next: NextFunction
 ) => {
   const postId = req.params.id;
+  const likeSender = req.userId;
   try {
     const post = await PostModel.findById(postId);
     const isLiked = post?.likes.find(
-      (userId) => userId.toString() === req.userId
+      (userId) => userId.toString() === likeSender
     );
     const updatedPost = await PostModel.findByIdAndUpdate(
       postId,
       isLiked
         ? {
-            $pull: { likes: req.userId },
+            $pull: { likes: likeSender },
           }
         : {
-            $push: { likes: req.userId },
+            $push: { likes: likeSender },
           },
       { new: true }
     );
     if (post) {
       if (isLiked) {
+        // if the post got dislike remove the likePost's notification as well
         await NotificationServices.deleteNotification({
           receiver: post.owner.toString(),
-          sender: req.userId,
+          sender: likeSender,
           type: 'likePost',
           postId: postId,
         });
       } else {
-        await NotificationServices.createNotification({
-          receiver: post.owner,
-          sender: new mongoose.Types.ObjectId(req.userId),
-          type: 'likePost',
-          postId: postId,
-        });
+        // create likePost notification if likeSender is not post owner
+        if (likeSender !== post.owner.toString()) {
+          await NotificationServices.createNotification({
+            receiver: post.owner,
+            sender: new mongoose.Types.ObjectId(likeSender),
+            type: 'likePost',
+            postId: postId,
+          });
+        }
       }
     }
     return res.status(200).json({ post: updatedPost });

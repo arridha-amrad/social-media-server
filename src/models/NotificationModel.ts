@@ -1,11 +1,10 @@
-import { Schema, model } from 'mongoose';
-
-export type NotificationType = 'likePost' | 'commentPost' | 'likeComment';
+import { Schema, model, Types } from 'mongoose';
+import { NotificationType } from '../enums/NotificationTypes';
 
 export interface INotificationModel {
   id: string;
-  receiver: Schema.Types.ObjectId;
-  sender: Schema.Types.ObjectId;
+  receiver: Types.ObjectId;
+  sender: Types.ObjectId;
   type: NotificationType;
   isRead: boolean;
   isChecked: boolean;
@@ -16,13 +15,13 @@ export interface INotificationModel {
 const NotificationSchema = new Schema(
   {
     receiver: {
-      type: Schema.Types.ObjectId,
+      type: Types.ObjectId,
       ref: 'User',
       required: true,
     },
     sender: {
       required: true,
-      type: Schema.Types.ObjectId,
+      type: Types.ObjectId,
       ref: 'User',
     },
     type: {

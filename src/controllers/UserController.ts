@@ -1,21 +1,27 @@
 import { NextFunction, Request, Response } from 'express';
-import { HTTP_CODE } from '../enums/HTTP_CODE';
-import { responseSuccess } from '../ServerResponse';
 import ServerErrorException from '../exceptions/ServerErrorException';
-import UserModel from '../models/UserModel';
+import * as UserServices from '../services/UserService';
+import * as NotificationServices from '../services/NotificationServices';
+import mongoose from 'mongoose';
 
-export const me = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+export const me = async (req: Request, res: Response, next: NextFunction) => {
+  const userId = req.userId;
   try {
-    const data = await UserModel.findById(req.userId);
-    if (data) {
-      return responseSuccess(res, HTTP_CODE.OK, data);
+    const userData = await UserServices.findUserById(
+      userId,
+      '_id username email avatarURL fullName'
+    );
+    const notifications = await NotificationServices.findNotifications({
+      receiver: new mongoose.Types.ObjectId(userId),
+    });
+    if (userData) {
+      return res.status(200).json({
+        user: userData,
+        notifications,
+      });
     }
   } catch (err) {
     console.log(err);
-    next(new ServerErrorException());
+    return next(new ServerErrorException());
   }
 };

@@ -18,7 +18,10 @@ export const findNotificationById = async (notificationId: string) => {
 export const findNotifications = async (
   filter?: FilterQuery<INotificationModel>
 ) => {
-  return NotificationModel.find({ ...filter });
+  return NotificationModel.find({ ...filter }).populate(
+    'sender',
+    '_id username avatarURL'
+  );
 };
 
 export const checkNotifications = async (

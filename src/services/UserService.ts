@@ -17,9 +17,10 @@ export const findUserByUsernameOrEmail = async (
 };
 
 export const findUserById = async (
-  userId: string
+  userId: string,
+  selects?: string
 ): Promise<IUserModel | null> => {
-  return UserModel.findById(userId);
+  return UserModel.findById(userId).select(selects);
 };
 
 export const findUserByIdAndUpdate = async (
