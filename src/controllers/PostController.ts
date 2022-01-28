@@ -128,13 +128,13 @@ export const likeDislikeHandler = async (
           postId: postId,
         });
       } else {
-        // create likePost notification if likeSender is not post owner
+        // create likePost notification if likeSender is not the post owner
         if (likeSender !== post.owner.toString()) {
           await NotificationServices.createNotification({
             receiver: post.owner,
             sender: new mongoose.Types.ObjectId(likeSender),
             type: 'likePost',
-            postId: postId,
+            post: post,
           });
         }
       }

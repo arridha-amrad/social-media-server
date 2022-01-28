@@ -8,8 +8,8 @@ export interface INotificationModel {
   type: NotificationType;
   isRead: boolean;
   isChecked: boolean;
-  postId: string;
-  commentId: string;
+  post: Types.ObjectId;
+  comment: Types.ObjectId;
 }
 
 const NotificationSchema = new Schema(
@@ -36,11 +36,13 @@ const NotificationSchema = new Schema(
       type: Boolean,
       default: false,
     },
-    commentId: {
-      type: String,
+    comment: {
+      type: Types.ObjectId,
+      ref: 'Comment',
     },
-    postId: {
-      type: String,
+    post: {
+      type: Types.ObjectId,
+      ref: 'Post',
     },
   },
   { timestamps: true }

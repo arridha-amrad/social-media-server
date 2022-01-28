@@ -22,13 +22,19 @@ import AuthRoutes from './routes/AuthRoutes';
 import UserRoutes from './routes/UserRoutes';
 import PostRoutes from './routes/PostRoutes';
 import CommentRoutes from './routes/CommentRoutes';
+import { createServer } from 'http';
 
 import './utils/Passport';
+import { initializeSocketIO } from './utils/SocketIO';
 
 console.clear();
 
 export const runServer = (): Application => {
   const app: Express = express();
+  const httpServer = createServer(app);
+
+  initializeSocketIO(httpServer);
+
   app.use(cors({ origin: process.env.CLIENT_ORIGIN, credentials: true }));
   app.use([
     passport.initialize(),
@@ -50,7 +56,7 @@ export const runServer = (): Application => {
     }
   );
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT} 🚀`);
   });
 
