@@ -156,25 +156,29 @@ export const likeDislikeHandler = async (
           },
       { new: true }
     );
+    let notification = null;
     if (isLiked) {
       // if the comment got dislike, remove the related notification
       await NotificationServices.deleteNotification({
-        sender: likeSender,
-        commentId,
+        comment,
         type: NotificationType.likeComment,
+        sender: new mongoose.Types.ObjectId(likeSender),
+        receiver: comment?.owner,
+        post: comment?.post,
       });
     } else {
       // if the likeSender is not the commentOwner, create notification
       if (likeSender !== comment?.owner.toString()) {
-        await NotificationServices.createNotification({
-          commentId,
-          sender: likeSender,
+        notification = await NotificationServices.createNotification({
+          comment,
+          sender: new mongoose.Types.ObjectId(likeSender),
           type: NotificationType.likeComment,
           receiver: comment?.owner,
+          post: comment?.post,
         });
       }
     }
-    return res.status(200).json({ comment: updatedComment });
+    return res.status(200).json({ comment: updatedComment, notification });
   } catch (err) {
     console.log(err);
     return next(new ServerErrorException());

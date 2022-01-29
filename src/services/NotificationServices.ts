@@ -4,12 +4,10 @@ import NotificationModel, {
 } from '../models/NotificationModel';
 
 export const createNotification = async (
-  newNotification: AnyObject | AnyKeys<INotificationModel>
+  data: AnyObject | AnyKeys<INotificationModel>
 ) => {
-  return (await NotificationModel.create(newNotification)).populate(
-    'sender',
-    '_id username avatarURL'
-  );
+  const newNotification = await NotificationModel.create(data);
+  return findNotificationById(newNotification.id);
 };
 
 export const createCommentNotification = async (
