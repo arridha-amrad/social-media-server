@@ -50,6 +50,14 @@ export const initializeSocketIO = (httpServer: HTTPServer) => {
       console.log('addUsers : ', onlineUsers);
     });
 
+    socket.on('addComment', (notification, toUsername) => {
+      console.log('comment...');
+      const user = getUser(toUsername);
+      if (user) {
+        io.to(user.socketId).emit('commentAlert', notification);
+      }
+    });
+
     socket.on('likePost', (notification, toUsername) => {
       console.log('like...');
       const user = getUser(toUsername);

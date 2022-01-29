@@ -31,17 +31,18 @@ export const createCommentHandler = async (
         $push: { comments: newComment.id },
       });
 
+      let notification = null;
       // Create notification if comment is not from the post owner
       if (commentOwner !== post!.owner.toString()) {
-        await NotificationServices.createNotification({
+        notification = await NotificationServices.createCommentNotification({
+          comment: newComment,
+          post,
           type: 'commentPost',
           receiver: post!.owner,
           sender: new mongoose.Types.ObjectId(commentOwner),
-          postId: postId,
-          commentId: comment.id,
         });
       }
-      return res.status(200).json({ comment });
+      return res.status(200).json({ comment, notification });
     }
   } catch (err) {
     console.log(err);

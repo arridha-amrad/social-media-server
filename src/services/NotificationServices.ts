@@ -6,13 +6,26 @@ import NotificationModel, {
 export const createNotification = async (
   newNotification: AnyObject | AnyKeys<INotificationModel>
 ) => {
-  return NotificationModel.create({
-    ...newNotification,
-  });
+  return (await NotificationModel.create(newNotification)).populate(
+    'sender',
+    '_id username avatarURL'
+  );
+};
+
+export const createCommentNotification = async (
+  data: AnyKeys<INotificationModel>
+) => {
+  const newNotification = await NotificationModel.create(data);
+  const notification = await findNotificationById(newNotification.id);
+  return notification;
 };
 
 export const findNotificationById = async (notificationId: string) => {
-  return NotificationModel.findById(notificationId);
+  return NotificationModel.findById(notificationId)
+    .populate('sender', '_id username avatarURL')
+    .populate('receiver', '_id username avatarURL')
+    .populate('comment')
+    .populate('post');
 };
 
 export const findNotifications = async (
@@ -22,10 +35,16 @@ export const findNotifications = async (
     .populate('sender', '_id username avatarURL')
     .populate('receiver', '_id username avatarURL')
     .populate({
+      path: 'comment',
+      select: 'body createdAt owner',
+      populate: { path: 'owner', select: 'username avatarURL' },
+    })
+    .populate({
       path: 'post',
       select: 'owner description',
       populate: { path: 'owner', select: 'username avatarURL' },
-    });
+    })
+    .sort({ createdAt: 'desc' });
 };
 
 export const checkNotifications = async (

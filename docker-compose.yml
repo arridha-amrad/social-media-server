@@ -5,20 +5,10 @@ services:
    mongo:
       image: mongo
       restart: always
-      container_name: "mongodb-container"
       ports: 
          - 27017:27017
       volumes: 
-         - mongodb_data_container:/data/db
-
-   mongo-express:
-      image: mongo-express
-      restart: always
-      container_name: "mongoExpress-container"
-      environment: 
-         ME_CONFIG_MONGODB_SERVER: "mongodb-container"
-      ports:
-         - 8081:8081
+         - mongo_data:/data/db
    
    redis:
       image: redis
@@ -41,6 +31,6 @@ services:
          - redisinsight_data:/db
 
 volumes: 
-   mongodb_data_container:
+   mongo_data:
    redis_data:
    redisinsight_data:
