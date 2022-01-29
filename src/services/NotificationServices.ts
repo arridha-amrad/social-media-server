@@ -1,7 +1,8 @@
-import { AnyKeys, AnyObject, Document, FilterQuery, Types } from 'mongoose';
+import { AnyKeys, AnyObject, Document, FilterQuery } from 'mongoose';
 import NotificationModel, {
   INotificationModel,
 } from '../models/NotificationModel';
+import mongoose from 'mongoose';
 
 export const createNotification = async (
   data: AnyObject | AnyKeys<INotificationModel>
@@ -35,22 +36,18 @@ export const findNotifications = async (
     .populate({
       path: 'comment',
       select: 'body createdAt owner',
-      populate: { path: 'owner', select: 'username avatarURL' },
     })
     .populate({
       path: 'post',
       select: 'owner description',
-      populate: { path: 'owner', select: 'username avatarURL' },
     })
     .sort({ createdAt: 'desc' });
 };
 
-export const checkNotifications = async (
-  notifications: (Document<any, any, INotificationModel> &
-    INotificationModel & {
-      _id: Types.ObjectId;
-    })[]
-) => {
+export const checkNotifications = async (receiverId: string) => {
+  const receiver = new mongoose.Types.ObjectId(receiverId);
+
+  const notifications = await NotificationModel.find({ receiver });
   notifications.forEach(async (notification) => {
     notification.isChecked = true;
     await notification.save();

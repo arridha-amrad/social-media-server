@@ -15,6 +15,7 @@ import { ExceptionType } from './interfacesAndTypes/ExceptionTypes';
 import { errorMiddleware } from './middleware/ErrorMiddleware';
 import { connect } from './database/mongo';
 import passport from 'passport';
+import { createServer } from 'http';
 
 import FacebookPassportRoute from './routes/FacebookPassportRoute';
 import GoogleOauthRoute from './routes/GoogleOauthRoute';
@@ -22,7 +23,7 @@ import AuthRoutes from './routes/AuthRoutes';
 import UserRoutes from './routes/UserRoutes';
 import PostRoutes from './routes/PostRoutes';
 import CommentRoutes from './routes/CommentRoutes';
-import { createServer } from 'http';
+import NotificationRoutes from './routes/NotificationRoutes';
 
 import './utils/Passport';
 import { initializeSocketIO } from './utils/SocketIO';
@@ -49,6 +50,7 @@ export const runServer = (): Application => {
   app.use('/api/comment', CommentRoutes);
   app.use('/api/facebook', FacebookPassportRoute);
   app.use('/api/google', GoogleOauthRoute);
+  app.use('/api/notification', NotificationRoutes);
   app.use(
     // eslint-disable-next-line
     (err: ExceptionType, req: Request, res: Response, _: NextFunction) => {

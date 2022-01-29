@@ -25,7 +25,7 @@ const addUser = (username: string, socketId: string) => {
 };
 
 const removeUser = (socketId: string) => {
-  onlineUsers.filter((user) => user.socketId !== socketId);
+  return onlineUsers.filter((user) => user.socketId !== socketId);
 };
 
 const getUser = (username: string) => {
@@ -76,7 +76,8 @@ export const initializeSocketIO = (httpServer: HTTPServer) => {
 
     socket.on('disconnect', () => {
       console.log('an user left');
-      removeUser(socket.id);
+      const users = removeUser(socket.id);
+      console.log('remaining users : ', users);
     });
   });
 };
