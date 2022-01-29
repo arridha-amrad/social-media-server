@@ -34,6 +34,7 @@ import {
   setRefreshTokenInRedis,
 } from '../services/redisServices';
 import * as NotificationServices from '../services/NotificationServices';
+import * as PostServices from '../services/PostServices';
 
 export const checkIsAuthenticated = async (req: Request, res: Response) => {
   const userId = getUserIdFromCookie(req);
@@ -201,11 +202,12 @@ export const loginHandler = async (
       const notifications = await NotificationServices.findNotifications({
         receiver: user._id,
       });
+      const posts = await PostServices.getPosts();
       return res
         .status(200)
         .cookie(process.env.COOKIE_NAME, encryptedAccessToken, cookieOptions())
         .cookie(process.env.COOKIE_ID, user.id, cookieOptions())
-        .json({ user: userData, notifications });
+        .json({ user: userData, notifications, posts });
     }
   } catch (err) {
     console.log(err);

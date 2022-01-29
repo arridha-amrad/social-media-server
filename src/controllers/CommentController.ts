@@ -93,8 +93,8 @@ export const deleteCommentHandler = async (
 
       // Delete notification of certain comment
       await NotificationServices.deleteNotification({
+        comment,
         type: 'commentPost',
-        commentId: commentId,
       });
 
       return res.status(200).send('comment deleted');
