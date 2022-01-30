@@ -86,8 +86,10 @@ export const deletePostHandler = async (
   res: Response,
   next: NextFunction
 ) => {
+  const postId = req.params.id;
   try {
-    await PostModel.findByIdAndDelete(req.params.id);
+    await NotificationServices.deleteNotifications({ post: postId });
+    await PostModel.findByIdAndDelete(postId);
     return res.status(200).send('post deleted');
   } catch (err) {
     console.log(err);
