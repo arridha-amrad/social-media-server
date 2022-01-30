@@ -121,7 +121,7 @@ export const likeDislikeHandler = async (
     if (post) {
       if (isLiked) {
         // if the post got dislike remove the likePost's notification as well
-        await NotificationServices.deleteNotification({
+        await NotificationServices.deleteNotifications({
           receiver: post.owner.toString(),
           sender: likeSender,
           type: 'likePost',

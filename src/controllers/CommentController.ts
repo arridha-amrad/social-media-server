@@ -92,9 +92,10 @@ export const deleteCommentHandler = async (
       await CommentModel.findByIdAndDelete(commentId);
 
       // Delete notification of certain comment
-      await NotificationServices.deleteNotification({
-        comment,
-        type: 'commentPost',
+      await NotificationServices.deleteNotifications({
+        post: comment.post,
+        comment: comment._id,
+        receiver: comment.owner,
       });
 
       return res.status(200).send('comment deleted');
@@ -159,7 +160,7 @@ export const likeDislikeHandler = async (
     let notification = null;
     if (isLiked) {
       // if the comment got dislike, remove the related notification
-      await NotificationServices.deleteNotification({
+      await NotificationServices.deleteNotifications({
         comment,
         type: NotificationType.likeComment,
         sender: new mongoose.Types.ObjectId(likeSender),

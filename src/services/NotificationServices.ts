@@ -61,10 +61,8 @@ export const readNotification = async (
   await notification?.save();
 };
 
-export const deleteNotification = async (
+export const deleteNotifications = async (
   filter: FilterQuery<INotificationModel>
 ) => {
-  return NotificationModel.findOneAndDelete({
-    ...filter,
-  });
+  return NotificationModel.deleteMany(filter);
 };
