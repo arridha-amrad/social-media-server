@@ -34,7 +34,7 @@ export const createCommentHandler = async (
       let notification = null;
       // Create notification if comment is not from the post owner
       if (commentOwner !== post!.owner.toString()) {
-        notification = await NotificationServices.createCommentNotification({
+        notification = await NotificationServices.createNotification({
           comment: newComment,
           post,
           type: 'commentPost',

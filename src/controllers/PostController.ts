@@ -3,6 +3,7 @@ import ServerErrorException from '../exceptions/ServerErrorException';
 import PostModel from '../models/PostModel';
 import * as NotificationServices from '../services/NotificationServices';
 import mongoose from 'mongoose';
+import * as PostServices from '../services/PostServices';
 
 export const createPostHandler = async (
   req: Request,
@@ -31,7 +32,7 @@ export const getPostHandler = async (
   next: NextFunction
 ) => {
   try {
-    const post = await PostModel.findById(req.params.id);
+    const post = await PostServices.findPostById(req.params.id);
     return res.status(200).json({ post });
   } catch (err) {
     console.log(err);

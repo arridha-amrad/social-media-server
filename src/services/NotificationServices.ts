@@ -11,13 +11,13 @@ export const createNotification = async (
   return findNotificationById(newNotification.id);
 };
 
-export const createCommentNotification = async (
-  data: AnyKeys<INotificationModel>
-) => {
-  const newNotification = await NotificationModel.create(data);
-  const notification = await findNotificationById(newNotification.id);
-  return notification;
-};
+// export const createCommentNotification = async (
+//   data: AnyKeys<INotificationModel>
+// ) => {
+//   const newNotification = await NotificationModel.create(data);
+//   const notification = await findNotificationById(newNotification.id);
+//   return notification;
+// };
 
 export const findNotificationById = async (notificationId: string) => {
   return NotificationModel.findById(notificationId)
