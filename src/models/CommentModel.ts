@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-interface ICommentModel {
+export interface ICommentModel {
   id: string;
   body: string;
   owner: mongoose.Types.ObjectId;

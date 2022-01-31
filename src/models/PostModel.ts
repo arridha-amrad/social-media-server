@@ -1,12 +1,12 @@
 import mongoose from 'mongoose';
 
-interface IPostModel {
+export interface IPostModel {
   id: string;
   imageURL: string;
   description: string;
   owner: mongoose.Types.ObjectId;
-  comments: [mongoose.Types.ObjectId];
-  likes: [mongoose.Types.ObjectId];
+  comments: mongoose.Types.ObjectId[];
+  likes: mongoose.Types.ObjectId[];
 }
 
 const PostSchema = new mongoose.Schema(

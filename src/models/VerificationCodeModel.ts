@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { IUserModel } from '../interfacesAndTypes/IUserModel';
 
-interface IVerificationCodeModel {
+export interface IVerificationCodeModel {
   code: string;
   owner: IUserModel;
   isComplete: boolean;

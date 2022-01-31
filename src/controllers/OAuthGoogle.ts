@@ -4,10 +4,10 @@ import axios from 'axios';
 import qs from 'qs';
 import UserModel from '../models/UserModel';
 import { v4 } from 'uuid';
-import { signAccessToken, signRefreshToken } from '../services/JwtService';
+import { signAccessToken, signRefreshToken } from '../services/JwtServices';
 import { encrypt } from '../utils/Encrypt';
 import { cookieOptions } from '../utils/CookieHelpers';
-import { setRefreshTokenInRedis } from '../services/redisServices';
+import { setRefreshTokenInRedis } from '../services/RedisServices';
 
 interface GoogleTokensResult {
   access_token: string;

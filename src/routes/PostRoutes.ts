@@ -7,7 +7,7 @@ import {
   updatePostHandler,
   likeDislikeHandler,
 } from '../controllers/PostController';
-import { verifyAccessToken } from '../services/JwtService';
+import { verifyAccessToken } from '../services/JwtServices';
 import rateLimit from 'express-rate-limit';
 
 const apiLimiter = rateLimit({

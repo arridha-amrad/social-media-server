@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import ServerErrorException from '../exceptions/ServerErrorException';
-import * as UserServices from '../services/UserService';
+import * as UserServices from '../services/UserServices';
 import * as NotificationServices from '../services/NotificationServices';
 import mongoose from 'mongoose';
 

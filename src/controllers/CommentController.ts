@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import ServerErrorException from '../exceptions/ServerErrorException';
 import CommentModel from '../models/CommentModel';
-import PostModel from '../models/PostModel';
 import * as NotificationServices from '../services/NotificationServices';
-import mongoose from 'mongoose';
 import { NotificationType } from '../enums/NotificationTypes';
+import * as CommentServices from '../services/CommentServices';
+import * as PostServices from '../services/PostServices';
 
 export const createCommentHandler = async (
   req: Request,
@@ -15,34 +15,34 @@ export const createCommentHandler = async (
   const postId = req.params.postId;
   const commentOwner = req.userId;
   try {
-    const newCommentData = new CommentModel({
-      owner: commentOwner,
-      body,
-      post: postId,
-    });
-    const newComment = await newCommentData.save();
-    const post = await PostModel.findById(postId);
+    const post = await PostServices.findPostById(postId);
     if (post) {
+      const newComment = await CommentServices.save({
+        owner: commentOwner,
+        body,
+        post: postId,
+      });
       const comment = await newComment.populate(
         'owner',
         '_id username avatarURL'
       );
-      await PostModel.findByIdAndUpdate(postId, {
-        $push: { comments: newComment.id },
-      });
+
+      await PostServices.addComment(postId, newComment.id);
 
       let notification = null;
       // Create notification if comment is not from the post owner
-      if (commentOwner !== post!.owner.toString()) {
+      if (commentOwner !== post!.owner._id.toString()) {
         notification = await NotificationServices.createNotification({
           comment: newComment,
           post,
           type: 'commentPost',
           receiver: post!.owner,
-          sender: new mongoose.Types.ObjectId(commentOwner),
+          sender: commentOwner,
         });
       }
       return res.status(200).json({ comment, notification });
+    } else {
+      return res.status(404).json({ message: 'Post not found' });
     }
   } catch (err) {
     console.log(err);
@@ -87,9 +87,9 @@ export const deleteCommentHandler = async (
 ) => {
   const commentId = req.params.id;
   try {
-    const comment = await CommentModel.findById(commentId);
+    const comment = await CommentServices.findCommentById(commentId);
     if (comment?.owner.toString() === req.userId) {
-      await CommentModel.findByIdAndDelete(commentId);
+      await CommentServices.findByIdAndDelete(commentId);
 
       // Delete notification of certain comment
       await NotificationServices.deleteNotifications({
@@ -115,14 +115,11 @@ export const updateCommentHandler = async (
 ) => {
   const commentId = req.params.id;
   try {
-    const comment = await CommentModel.findById(commentId);
+    const comment = await CommentServices.findCommentById(commentId);
     if (comment?.owner.toString() === req.userId) {
-      const updatedComment = await CommentModel.findByIdAndUpdate(
-        req.params.id,
-        {
-          ...req.body,
-        },
-        { new: true }
+      const updatedComment = await CommentServices.findCommentByIdAndUpdate(
+        commentId,
+        { ...req.body }
       );
       return res.status(200).json({ comment: updatedComment });
     } else {
@@ -142,28 +139,24 @@ export const likeDislikeHandler = async (
   const commentId = req.params.id;
   const likeSender = req.userId;
   try {
-    const comment = await CommentModel.findById(commentId);
+    const comment = await CommentServices.findCommentById(commentId);
     const isLiked = comment?.likes.find(
       (userId) => userId.toString() === likeSender
     );
-    const updatedComment = await CommentModel.findByIdAndUpdate(
+
+    const updatedComment = await CommentServices.updateLike(
       commentId,
-      isLiked
-        ? {
-            $pull: { likes: likeSender },
-          }
-        : {
-            $push: { likes: likeSender },
-          },
-      { new: true }
+      !!isLiked,
+      likeSender
     );
+
     let notification = null;
     if (isLiked) {
       // if the comment got dislike, remove the related notification
       await NotificationServices.deleteNotifications({
         comment,
         type: NotificationType.likeComment,
-        sender: new mongoose.Types.ObjectId(likeSender),
+        sender: likeSender,
         receiver: comment?.owner,
         post: comment?.post,
       });
@@ -172,7 +165,7 @@ export const likeDislikeHandler = async (
       if (likeSender !== comment?.owner.toString()) {
         notification = await NotificationServices.createNotification({
           comment,
-          sender: new mongoose.Types.ObjectId(likeSender),
+          sender: likeSender,
           type: NotificationType.likeComment,
           receiver: comment?.owner,
           post: comment?.post,

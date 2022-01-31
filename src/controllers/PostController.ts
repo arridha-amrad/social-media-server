@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import ServerErrorException from '../exceptions/ServerErrorException';
-import PostModel from '../models/PostModel';
 import * as NotificationServices from '../services/NotificationServices';
-import mongoose from 'mongoose';
 import * as PostServices from '../services/PostServices';
 
 export const createPostHandler = async (
@@ -11,14 +9,14 @@ export const createPostHandler = async (
   next: NextFunction
 ) => {
   const { imageURL, description } = req.body;
+  const postOwner = req.userId;
   try {
-    const newPostData = new PostModel({
+    const newPost = await PostServices.save({
       imageURL,
       description,
-      owner: req.userId,
+      owner: postOwner,
     });
-    const newPost = await newPostData.save();
-    await newPost.populate('owner', 'id username avatarURL');
+    await newPost.populate('owner', '_id username avatarURL');
     return res.status(201).json({ post: newPost });
   } catch (err) {
     console.log(err);
@@ -31,8 +29,9 @@ export const getPostHandler = async (
   res: Response,
   next: NextFunction
 ) => {
+  const postId = req.params.id;
   try {
-    const post = await PostServices.findPostById(req.params.id);
+    const post = await PostServices.findPostById(postId);
     return res.status(200).json({ post });
   } catch (err) {
     console.log(err);
@@ -46,17 +45,7 @@ export const getPostsHandler = async (
   next: NextFunction
 ) => {
   try {
-    const posts = await PostModel.find()
-      .populate('owner', 'id username avatarURL')
-      .populate({
-        path: 'comments',
-        options: { sort: { createdAt: 'desc' } },
-        populate: {
-          path: 'owner',
-          select: 'id username avatarURL',
-        },
-      })
-      .sort({ createdAt: 'desc' });
+    const posts = await PostServices.getPosts();
     return res.status(200).json({ posts });
   } catch (err) {
     console.log(err);
@@ -69,12 +58,11 @@ export const updatePostHandler = async (
   res: Response,
   next: NextFunction
 ) => {
+  const postId = req.params.id;
   try {
-    const updatedPost = await PostModel.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body },
-      { new: true }
-    );
+    const updatedPost = await PostServices.findPostByIdAndUpdate(postId, {
+      ...req.body,
+    });
     return res.status(201).json({ post: updatedPost });
   } catch (err) {
     console.log(err);
@@ -90,7 +78,7 @@ export const deletePostHandler = async (
   const postId = req.params.id;
   try {
     await NotificationServices.deleteNotifications({ post: postId });
-    await PostModel.findByIdAndDelete(postId);
+    await PostServices.findPostByIdAndDelete(postId);
     return res.status(200).send('post deleted');
   } catch (err) {
     console.log(err);
@@ -106,20 +94,14 @@ export const likeDislikeHandler = async (
   const postId = req.params.id;
   const likeSender = req.userId;
   try {
-    const post = await PostModel.findById(postId);
+    const post = await PostServices.findById(postId);
     const isLiked = post?.likes.find(
       (userId) => userId.toString() === likeSender
     );
-    const updatedPost = await PostModel.findByIdAndUpdate(
+    const updatedPost = await PostServices.addLike(
       postId,
-      isLiked
-        ? {
-            $pull: { likes: likeSender },
-          }
-        : {
-            $push: { likes: likeSender },
-          },
-      { new: true }
+      !!isLiked,
+      likeSender
     );
     if (post) {
       if (isLiked) {
@@ -135,7 +117,7 @@ export const likeDislikeHandler = async (
         if (likeSender !== post.owner.toString()) {
           await NotificationServices.createNotification({
             receiver: post.owner,
-            sender: new mongoose.Types.ObjectId(likeSender),
+            sender: likeSender,
             type: 'likePost',
             post: post,
           });
