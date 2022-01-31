@@ -1,20 +1,24 @@
 import Express from 'express';
-import * as authController from '../controllers/AuthController';
-import { verifyAccessToken } from '../services/JwtService';
+import {
+  loginHandler,
+  registerHandler,
+  forgotPasswordHandler,
+  resetPasswordHandler,
+  emailVerificationHandler,
+  refreshTokenHandler,
+  logoutHandler,
+} from '../controllers/AuthController';
+import { verifyAccessToken } from '../services/JwtServices';
 
 // eslint-disable-next-line
 const router = Express.Router();
 
-router.post('/login', authController.loginHandler);
-router.post('/register', authController.registerHandler);
-router.post('/forgot-password', authController.forgotPasswordHandler);
-router.post(
-  '/reset-password/:encryptedLinkToken',
-  authController.resetPasswordHandler
-);
-router.put('/verify-email', authController.emailVerificationHandler);
-router.get('/refresh-token', authController.refreshTokenHandler);
-router.get('/isAuthenticated', authController.checkIsAuthenticated);
-router.post('/logout', verifyAccessToken, authController.logoutHandler);
+router.post('/login', loginHandler);
+router.post('/register', registerHandler);
+router.post('/forgot-password', forgotPasswordHandler);
+router.post('/reset-password/:encryptedLinkToken', resetPasswordHandler);
+router.put('/verify-email', emailVerificationHandler);
+router.get('/refresh-token', refreshTokenHandler);
+router.post('/logout', verifyAccessToken, logoutHandler);
 
 export default router;

@@ -2,12 +2,12 @@ import { NextFunction, Request, Response } from 'express';
 import { AuthenticationStrategy, RequiredAuthAction } from '../enums/UserEnum';
 import { v4 } from 'uuid';
 import argon2 from 'argon2';
-import sendEmail from '../services/MailService';
+import sendEmail from '../services/MailServices';
 import {
   emailConfirmation,
   resetPasswordRequest,
 } from '../templates/MailTemplates';
-import * as JwtService from '../services/JwtService';
+import * as JwtService from '../services/JwtServices';
 import * as msg from '../templates/NotificationTemplates';
 import {
   responseSuccess,
@@ -21,33 +21,17 @@ import Exception from '../exceptions/Exception';
 import ServerErrorException from '../exceptions/ServerErrorException';
 import { decrypt, encrypt } from '../utils/Encrypt';
 import { LoginRequest, RegisterRequest } from '../dto/AuthData';
-import { customAlphabet } from 'nanoid/async';
-import VerificationCodeModel from '../models/VerificationCodeModel';
 import UserModel from '../models/UserModel';
-import {
-  cookieOptions,
-  getAuthTokenFromCookie,
-  getUserIdFromCookie,
-} from '../utils/CookieHelpers';
+import { cookieOptions, getUserIdFromCookie } from '../utils/CookieHelpers';
 import {
   getRefreshTokenFromRedis,
   setRefreshTokenInRedis,
-} from '../services/redisServices';
+} from '../services/RedisServices';
 import * as NotificationServices from '../services/NotificationServices';
 import * as PostServices from '../services/PostServices';
-
-export const checkIsAuthenticated = async (req: Request, res: Response) => {
-  const userId = getUserIdFromCookie(req);
-  const accessToken = getAuthTokenFromCookie(req);
-  if (userId && accessToken) {
-    const user = await UserModel.findById(userId);
-    if (user) {
-      res.send('login');
-    }
-  } else {
-    res.send('not login');
-  }
-};
+import * as UserServices from '../services/UserServices';
+import { verificationCodeGenerator } from '../utils/CodeGenerator';
+import * as VerificationCodeServices from '../services/VerificationCodeServices';
 
 export const registerHandler = async (
   req: Request,
@@ -62,41 +46,44 @@ export const registerHandler = async (
   });
   if (!valid) next(new BadRequestException(errors));
   try {
-    const existingUsername = await UserModel.findOne({ username });
+    const existingUsername = await UserServices.findUser({ username });
+
     if (existingUsername) {
       return res.status(400).json({
         message: 'Another user has been registered with this username',
       });
     }
-    const existingUser = await UserModel.findOne({ email });
-    if (existingUser) {
+
+    const existingEmail = await UserServices.findUser({ email });
+
+    if (existingEmail) {
       return res.status(400).json({
         message: 'Another user has been registered with this email',
       });
     }
+
     const hashedPassword = await argon2.hash(password);
-    const newUser = new UserModel({
+
+    const newUser = await UserServices.save({
       email,
       username,
       password: hashedPassword,
       strategy: AuthenticationStrategy.default,
       requiredAuthAction: RequiredAuthAction.emailVerification,
     });
-    await newUser.save();
-    const verificationCodeGenerator = customAlphabet(
-      // cspell:disable
-      '1234567890qazwsxedcrfvtgbyhnujkilop',
-      6
-    );
     const verificationCode = await verificationCodeGenerator();
-    const newVerificationCode = new VerificationCodeModel({
+
+    await VerificationCodeServices.save({
       code: verificationCode,
       owner: newUser.id,
     });
-    await newVerificationCode.save();
+
     await sendEmail(email, emailConfirmation(username, verificationCode));
-    res.cookie(process.env.COOKIE_ID, newUser.id, cookieOptions());
-    res.status(201).json({ message: msg.registerSuccess(email) });
+
+    return res
+      .status(201)
+      .cookie(process.env.COOKIE_ID, newUser.id, cookieOptions())
+      .json({ message: msg.registerSuccess(email) });
   } catch (err) {
     console.log(err);
     return next(new ServerErrorException());
@@ -114,32 +101,31 @@ export const emailVerificationHandler = async (
   }
   try {
     const userId = getUserIdFromCookie(req);
-    const code = await VerificationCodeModel.findOne({
-      owner: userId,
-    }).populate('owner', '-password');
+    const code = await VerificationCodeServices.findCode({ owner: userId });
     if (userId && code && !code.isComplete && code.code === verificationCode) {
       code.isComplete = true;
       await code.save();
-      const user = await UserModel.findByIdAndUpdate(
-        userId,
-        {
-          jwtVersion: v4(),
-          isActive: true,
-          isLogin: true,
-          isVerified: true,
-          requiredAuthAction: RequiredAuthAction.none,
-        },
-        { new: true }
-      );
+      const user = await UserServices.findUserByIdAndUpdate(userId, {
+        jwtVersion: v4(),
+        isActive: true,
+        isLogin: true,
+        isVerified: true,
+        requiredAuthAction: RequiredAuthAction.none,
+      });
       if (user) {
         const accessToken = await JwtService.signAccessToken(user);
         const refreshToken = await JwtService.signRefreshToken(user);
+
         const encryptedAccessToken = encrypt(accessToken ?? '');
         const encryptedRefreshToken = encrypt(refreshToken ?? '');
+
         await setRefreshTokenInRedis(userId, encryptedRefreshToken);
-        const loginUser = await UserModel.findById(userId).select(
+
+        const loginUser = await UserServices.findUserById(
+          userId,
           '-password -jwtVersion -strategy -requiredAuthAction'
         );
+
         if (loginUser) {
           return responseWithCookie(res, encryptedAccessToken, loginUser);
         }
@@ -172,26 +158,30 @@ export const loginHandler = async (
     return next(new BadRequestException(errors));
   }
   try {
-    const user = await UserModel.findOne(
-      identity.includes('@') ? { email: identity } : { username: identity }
-    );
+    const user = await UserServices.findUserByUsernameOrEmail(identity);
+
     if (!user) {
       return next(new Exception(HTTP_CODE.NOT_FOUND, 'user not found'));
     }
     if (!user.isVerified) {
       return next(new Exception(HTTP_CODE.FORBIDDEN, msg.emailNotVerified));
     }
+
     const isMatch = await argon2.verify(user.password, password);
     if (!isMatch) {
       return next(new Exception(HTTP_CODE.FORBIDDEN, msg.invalidPassword));
     }
+
     const accessToken = await JwtService.signAccessToken(user);
     const refreshToken = await JwtService.signRefreshToken(user);
+
     if (accessToken && refreshToken) {
       const encryptedAccessToken = encrypt(accessToken);
       const encryptedRefreshToken = encrypt(refreshToken);
+
       // store refreshToken to redis
       await setRefreshTokenInRedis(user.id, encryptedRefreshToken);
+
       const userData = {
         _id: user.id,
         email: user.email,
@@ -199,10 +189,13 @@ export const loginHandler = async (
         fullName: user.fullName,
         avatarURL: user.avatarURL,
       };
+
       const notifications = await NotificationServices.findNotifications({
-        receiver: user._id,
+        receiver: user.id,
       });
+
       const posts = await PostServices.getPosts();
+
       return res
         .status(200)
         .cookie(process.env.COOKIE_NAME, encryptedAccessToken, cookieOptions())

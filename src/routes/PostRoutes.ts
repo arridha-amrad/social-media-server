@@ -7,7 +7,7 @@ import {
   updatePostHandler,
   likeDislikeHandler,
 } from '../controllers/PostController';
-import { verifyAccessToken } from '../services/JwtService';
+import { verifyAccessToken } from '../services/JwtServices';
 
 // eslint-disable-next-line
 const router = express.Router();

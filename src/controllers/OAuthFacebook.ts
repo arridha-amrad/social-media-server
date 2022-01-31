@@ -3,8 +3,8 @@ import { Request, Response } from 'express';
 import nanoid from 'nanoid/async';
 import { v4 } from 'uuid';
 import UserModel from '../models/UserModel';
-import { signAccessToken, signRefreshToken } from '../services/JwtService';
-import { setRefreshTokenInRedis } from '../services/redisServices';
+import { signAccessToken, signRefreshToken } from '../services/JwtServices';
+import { setRefreshTokenInRedis } from '../services/RedisServices';
 import { cookieOptions } from '../utils/CookieHelpers';
 import { encrypt } from '../utils/Encrypt';
 

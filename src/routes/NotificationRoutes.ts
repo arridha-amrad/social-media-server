@@ -1,7 +1,7 @@
 /* eslint-disable new-cap */
 import express from 'express';
 import { checkNotification } from '../controllers/NotificationController';
-import { verifyAccessToken } from '../services/JwtService';
+import { verifyAccessToken } from '../services/JwtServices';
 
 const router = express.Router();
 
