@@ -22,15 +22,7 @@ services:
          interval: 3s
          timeout: 5s
          retries: 5
-   
-   redis-insight:
-      image: redislabs/redisinsight
-      ports: 
-         - 127.0.0.1:8001:8001
-      volumes:
-         - redisinsight_data:/db
 
 volumes: 
    mongo_data:
    redis_data:
-   redisinsight_data:
